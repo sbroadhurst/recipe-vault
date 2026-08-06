@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Recipe Vault</title>
+<meta name="description" content="Your personal recipe collection, synced across devices." />
+<meta name="theme-color" content="#e8702a" />
+
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icons/icon-192.png" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Recipe Vault" />
+
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ============ AUTH SCREEN ============ -->
+<section id="auth-screen" class="screen">
+  <div class="auth-card">
+    <h1 class="logo">🍲 Recipe Vault</h1>
+    <p class="tagline">Your recipes, everywhere you cook.</p>
+
+    <form id="auth-form">
+      <input type="email" id="auth-email" placeholder="Email" autocomplete="email" required />
+      <input type="password" id="auth-password" placeholder="Password" autocomplete="current-password" required minlength="6" />
+      <button type="submit" id="auth-submit" class="btn btn-primary">Log In</button>
+    </form>
+
+    <p class="auth-toggle">
+      <span id="auth-toggle-text">Don't have an account?</span>
+      <button id="auth-toggle-btn" class="link-btn">Sign Up</button>
+    </p>
+
+    <p id="auth-message" class="auth-message"></p>
+  </div>
+</section>
+
+<!-- ============ MAIN APP ============ -->
+<section id="app-screen" class="screen hidden">
+  <header class="app-header">
+    <h1 class="logo small">🍲 Recipe Vault</h1>
+    <div class="header-actions">
+      <button id="add-recipe-btn" class="btn btn-primary">+ Add Recipe</button>
+      <button id="logout-btn" class="btn btn-ghost">Log Out</button>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <input type="search" id="search-input" placeholder="Search your recipes..." />
+  </div>
+
+  <main id="recipe-grid" class="recipe-grid">
+    <!-- recipe cards injected here -->
+  </main>
+
+  <p id="empty-state" class="empty-state hidden">No recipes yet. Tap "+ Add Recipe" to start your collection.</p>
+</section>
+
+<!-- ============ ADD / EDIT RECIPE MODAL ============ -->
+<div id="recipe-modal" class="modal hidden">
+  <div class="modal-content">
+    <button id="close-modal-btn" class="modal-close">&times;</button>
+    <h2 id="modal-title">Add Recipe</h2>
+
+    <div class="import-row">
+      <input type="url" id="import-url-input" placeholder="Paste a recipe link (coming soon)" disabled />
+      <button id="import-url-btn" class="btn btn-secondary" type="button">Auto-fill</button>
+    </div>
+    <p class="import-note">Pasting a link to auto-fill this form is coming in a future version. For now, enter details manually below.</p>
+
+    <form id="recipe-form">
+      <input type="hidden" id="recipe-id" />
+
+      <label>Title</label>
+      <input type="text" id="recipe-title" required />
+
+      <label>Source URL (optional)</label>
+      <input type="url" id="recipe-source" placeholder="https://..." />
+
+      <label>Image URL (optional)</label>
+      <input type="url" id="recipe-image" placeholder="https://..." />
+
+      <label>Tags (comma separated)</label>
+      <input type="text" id="recipe-tags" placeholder="dinner, pasta, quick" />
+
+      <label>Ingredients (one per line)</label>
+      <textarea id="recipe-ingredients" rows="6" required></textarea>
+
+      <label>Instructions</label>
+      <textarea id="recipe-instructions" rows="8" required></textarea>
+
+      <div class="modal-actions">
+        <button type="button" id="delete-recipe-btn" class="btn btn-danger hidden">Delete</button>
+        <button type="submit" class="btn btn-primary">Save Recipe</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ VIEW RECIPE MODAL ============ -->
+<div id="view-modal" class="modal hidden">
+  <div class="modal-content">
+    <button id="close-view-btn" class="modal-close">&times;</button>
+    <img id="view-image" class="view-image hidden" />
+    <h2 id="view-title"></h2>
+    <a id="view-source" class="view-source hidden" target="_blank" rel="noopener">Original recipe &#8599;</a>
+    <div id="view-tags" class="tag-row"></div>
+
+    <h3>Ingredients</h3>
+    <ul id="view-ingredients"></ul>
+
+    <h3>Instructions</h3>
+    <p id="view-instructions" class="view-instructions"></p>
+
+    <button id="edit-recipe-btn" class="btn btn-secondary">Edit</button>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="app.js"></script>
+</body>
+</html>
