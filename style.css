@@ -649,6 +649,21 @@ textarea:focus {
   flex: 1;
 }
 
+.confirm-content {
+  max-width: 360px;
+  text-align: center;
+}
+.confirm-content #confirm-message {
+  margin: 4px 0 20px;
+  line-height: 1.5;
+}
+.confirm-content .modal-actions {
+  margin-top: 0;
+}
+.confirm-content .btn {
+  flex: 1;
+}
+
 .stop-sharing-btn {
   display: block;
   margin: 10px auto 0;

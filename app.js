@@ -605,6 +605,36 @@ function showToast(msg) {
   setTimeout(() => toast.classList.add('hidden'), 2500)
 }
 
+// ---------- Confirm dialog (replaces the native confirm()) ----------
+const confirmModal = document.getElementById('confirm-modal')
+const confirmMessage = document.getElementById('confirm-message')
+const confirmOkBtn = document.getElementById('confirm-ok-btn')
+const confirmCancelBtn = document.getElementById('confirm-cancel-btn')
+
+function confirmDialog(message, okLabel = 'Delete') {
+  return new Promise((resolve) => {
+    confirmMessage.textContent = message
+    confirmOkBtn.textContent = okLabel
+    confirmModal.classList.remove('hidden')
+
+    function cleanup(result) {
+      confirmModal.classList.add('hidden')
+      confirmOkBtn.removeEventListener('click', onOk)
+      confirmCancelBtn.removeEventListener('click', onCancel)
+      resolve(result)
+    }
+    function onOk() {
+      cleanup(true)
+    }
+    function onCancel() {
+      cleanup(false)
+    }
+
+    confirmOkBtn.addEventListener('click', onOk)
+    confirmCancelBtn.addEventListener('click', onCancel)
+  })
+}
+
 // ---------- Auth ----------
 authToggleBtn.addEventListener('click', () => {
   isSignUpMode = !isSignUpMode
@@ -901,7 +931,8 @@ recipeForm.addEventListener('submit', async (e) => {
 deleteRecipeBtn.addEventListener('click', async () => {
   const id = recipeIdInput.value
   if (!id) return
-  if (!confirm("Delete this recipe? This can't be undone.")) return
+  const confirmed = await confirmDialog("Delete this recipe? This can't be undone.")
+  if (!confirmed) return
 
   const { error } = await supabaseClient.from('recipes').delete().eq('id', id)
   if (error) {
