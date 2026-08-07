@@ -26,6 +26,7 @@ const addRecipeBtn = document.getElementById('add-recipe-btn')
 const searchInput = document.getElementById('search-input')
 const recipeGrid = document.getElementById('recipe-grid')
 const emptyState = document.getElementById('empty-state')
+const tagFilterBar = document.getElementById('tag-filter-bar')
 
 const recipeModal = document.getElementById('recipe-modal')
 const closeModalBtn = document.getElementById('close-modal-btn')
@@ -692,6 +693,8 @@ supabaseClient.auth.onAuthStateChange((_event, session) => {
 })
 
 // ---------- Recipes: load & render ----------
+let selectedFilterTags = new Set()
+
 async function loadRecipes() {
   const { data, error } = await supabaseClient.from('recipes').select('*').order('created_at', { ascending: false })
 
@@ -700,7 +703,77 @@ async function loadRecipes() {
     return
   }
   allRecipes = data || []
-  renderRecipes(allRecipes)
+  // Drop any filter tags that no longer exist on any recipe.
+  const stillValid = new Set(getAllUserTags())
+  selectedFilterTags.forEach((t) => {
+    if (!stillValid.has(t)) selectedFilterTags.delete(t)
+  })
+  renderTagFilterBar()
+  applyFilters()
+}
+
+function renderTagFilterBar() {
+  const tags = getAllUserTags()
+  if (!tags.length) {
+    tagFilterBar.innerHTML = ''
+    return
+  }
+
+  const chips = tags
+    .map(
+      (t) =>
+        `<button type="button" class="filter-tag${selectedFilterTags.has(t) ? ' active' : ''}" data-tag="${escapeAttr(t)}">${escapeHtml(t)}</button>`,
+    )
+    .join('')
+  const clearBtn = selectedFilterTags.size ? '<button type="button" class="filter-clear-btn">Clear filters</button>' : ''
+
+  tagFilterBar.innerHTML = chips + clearBtn
+
+  tagFilterBar.querySelectorAll('.filter-tag').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const tag = btn.dataset.tag
+      if (selectedFilterTags.has(tag)) {
+        selectedFilterTags.delete(tag)
+      } else {
+        selectedFilterTags.add(tag)
+      }
+      renderTagFilterBar()
+      applyFilters()
+    })
+  })
+
+  const clear = tagFilterBar.querySelector('.filter-clear-btn')
+  if (clear) {
+    clear.addEventListener('click', () => {
+      selectedFilterTags.clear()
+      renderTagFilterBar()
+      applyFilters()
+    })
+  }
+}
+
+// Applies the current search text and selected tag filters together.
+// Tag filters use OR logic (a recipe matches if it has any selected tag).
+function applyFilters() {
+  const q = searchInput.value.trim().toLowerCase()
+
+  const filtered = allRecipes.filter((r) => {
+    if (selectedFilterTags.size) {
+      const recipeTags = r.tags || []
+      const hasSelectedTag = recipeTags.some((t) => selectedFilterTags.has(t))
+      if (!hasSelectedTag) return false
+    }
+
+    if (!q) return true
+
+    const ingredientNames = parseIngredients(r.ingredients)
+      .map((i) => i.name)
+      .join(' ')
+    const haystack = [r.title, ingredientNames, (r.tags || []).join(' ')].join(' ').toLowerCase()
+    return haystack.includes(q)
+  })
+
+  renderRecipes(filtered)
 }
 
 function renderRecipes(recipes) {
@@ -728,21 +801,7 @@ function renderRecipes(recipes) {
   }
 }
 
-searchInput.addEventListener('input', () => {
-  const q = searchInput.value.trim().toLowerCase()
-  if (!q) {
-    renderRecipes(allRecipes)
-    return
-  }
-  const filtered = allRecipes.filter((r) => {
-    const ingredientNames = parseIngredients(r.ingredients)
-      .map((i) => i.name)
-      .join(' ')
-    const haystack = [r.title, ingredientNames, (r.tags || []).join(' ')].join(' ').toLowerCase()
-    return haystack.includes(q)
-  })
-  renderRecipes(filtered)
-})
+searchInput.addEventListener('input', () => applyFilters())
 
 // ---------- Add / Edit modal ----------
 addRecipeBtn.addEventListener('click', () => openAddModal())

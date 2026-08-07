@@ -162,6 +162,43 @@ textarea:focus {
   max-width: 480px;
 }
 
+.tag-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 20px 0;
+}
+.tag-filter-bar:empty {
+  display: none;
+}
+
+.filter-tag {
+  background: #f1e6da;
+  color: var(--accent-dark);
+  font-size: 0.8rem;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+.filter-tag:hover {
+  border-color: var(--accent);
+}
+.filter-tag.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.filter-clear-btn {
+  background: none;
+  border: none;
+  color: var(--text-light);
+  font-size: 0.8rem;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 6px 4px;
+}
+
 .recipe-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
