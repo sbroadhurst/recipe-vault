@@ -48,6 +48,7 @@ const addIngredientBtn = document.getElementById('add-ingredient-btn')
 const instructionsListEl = document.getElementById('instructions-list')
 const addInstructionBtn = document.getElementById('add-instruction-btn')
 const deleteRecipeBtn = document.getElementById('delete-recipe-btn')
+const importUrlInput = document.getElementById('import-url-input')
 const importUrlBtn = document.getElementById('import-url-btn')
 
 // ---------- Ingredient units & suggestions ----------
@@ -875,8 +876,48 @@ function openEditModal(recipe) {
   recipeModal.classList.remove('hidden')
 }
 
-importUrlBtn.addEventListener('click', () => {
-  showToast('Auto-fill from a link is coming in a future version!')
+importUrlBtn.addEventListener('click', async () => {
+  const url = importUrlInput.value.trim()
+  if (!url) {
+    showToast('Paste a recipe link first.')
+    return
+  }
+
+  const originalLabel = importUrlBtn.textContent
+  importUrlBtn.disabled = true
+  importUrlBtn.textContent = 'Fetching...'
+
+  try {
+    const { data, error } = await supabaseClient.functions.invoke('import-recipe', { body: { url } })
+    if (error) throw error
+    if (data && data.error) {
+      showToast(data.error)
+      return
+    }
+
+    if (data.title) recipeTitleInput.value = data.title
+    recipeSourceInput.value = data.source_url || url
+
+    if (data.image_url) {
+      recipeImageInput.value = data.image_url
+      updateImagePreview()
+    }
+
+    if (Array.isArray(data.ingredients) && data.ingredients.length) {
+      setIngredientRows(data.ingredients)
+    }
+
+    if (Array.isArray(data.instructions) && data.instructions.length) {
+      setInstructionRows(data.instructions)
+    }
+
+    showToast('Recipe imported - double-check it before saving')
+  } catch (err) {
+    showToast('Import failed: ' + (err.message || 'unknown error'))
+  } finally {
+    importUrlBtn.disabled = false
+    importUrlBtn.textContent = originalLabel
+  }
 })
 
 recipeForm.addEventListener('submit', async (e) => {
