@@ -528,9 +528,6 @@ tagsInput.addEventListener('keydown', (e) => {
     addTag(tagsInput.value)
     tagsInput.value = ''
     renderTagOptions('')
-  } else if (e.key === 'Backspace' && !tagsInput.value && currentTags.length) {
-    currentTags.pop()
-    renderTagChips()
   }
 })
 
