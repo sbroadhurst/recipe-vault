@@ -89,11 +89,27 @@
           <label>Source URL (optional)</label>
           <input type="url" id="recipe-source" placeholder="https://..." />
 
-          <label>Image URL (optional)</label>
-          <input type="url" id="recipe-image" placeholder="https://..." />
+          <label>Photo (optional)</label>
+          <div class="image-field">
+            <img id="image-preview" class="image-preview hidden" alt="Recipe photo preview" />
+            <div class="image-actions">
+              <input type="file" id="recipe-image-file" accept="image/*" class="hidden" />
+              <button type="button" id="upload-image-btn" class="btn btn-secondary">Upload Photo</button>
+              <button type="button" id="remove-image-btn" class="btn btn-ghost hidden">Remove</button>
+            </div>
+            <input type="url" id="recipe-image" placeholder="or paste an image URL" />
+          </div>
 
-          <label>Tags (comma separated)</label>
-          <input type="text" id="recipe-tags" placeholder="dinner, pasta, quick" />
+          <label>Tags</label>
+          <div class="tags-field">
+            <div id="tags-chips" class="tags-chips"></div>
+            <div class="combo tags-combo">
+              <input type="text" id="tags-input" class="tags-text-input" placeholder="Add a tag..." autocomplete="off" />
+              <div class="combo-panel hidden">
+                <div class="combo-options"></div>
+              </div>
+            </div>
+          </div>
 
           <label>Ingredients</label>
           <div id="ingredients-list" class="ingredients-list"></div>

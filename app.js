@@ -35,7 +35,12 @@ const recipeIdInput = document.getElementById('recipe-id')
 const recipeTitleInput = document.getElementById('recipe-title')
 const recipeSourceInput = document.getElementById('recipe-source')
 const recipeImageInput = document.getElementById('recipe-image')
-const recipeTagsInput = document.getElementById('recipe-tags')
+const imageFileInput = document.getElementById('recipe-image-file')
+const uploadImageBtn = document.getElementById('upload-image-btn')
+const removeImageBtn = document.getElementById('remove-image-btn')
+const imagePreview = document.getElementById('image-preview')
+const tagsChipsEl = document.getElementById('tags-chips')
+const tagsInput = document.getElementById('tags-input')
 const ingredientsListEl = document.getElementById('ingredients-list')
 const addIngredientBtn = document.getElementById('add-ingredient-btn')
 const instructionsListEl = document.getElementById('instructions-list')
@@ -372,6 +377,169 @@ function formatIngredientLine(ing) {
   return [ing.qty, ing.unit, ing.name].filter(Boolean).join(' ')
 }
 
+// ---------- Recipe photo: upload from device or paste a URL ----------
+const RECIPE_IMAGE_BUCKET = 'recipe-images'
+const MAX_IMAGE_MB = 8
+
+function updateImagePreview() {
+  const url = recipeImageInput.value.trim()
+  if (url) {
+    imagePreview.src = url
+    imagePreview.classList.remove('hidden')
+    removeImageBtn.classList.remove('hidden')
+  } else {
+    imagePreview.removeAttribute('src')
+    imagePreview.classList.add('hidden')
+    removeImageBtn.classList.add('hidden')
+  }
+}
+
+imagePreview.addEventListener('error', () => {
+  if (recipeImageInput.value.trim()) imagePreview.classList.add('hidden')
+})
+
+recipeImageInput.addEventListener('input', updateImagePreview)
+
+removeImageBtn.addEventListener('click', () => {
+  recipeImageInput.value = ''
+  updateImagePreview()
+})
+
+uploadImageBtn.addEventListener('click', () => imageFileInput.click())
+
+imageFileInput.addEventListener('change', async () => {
+  const file = imageFileInput.files[0]
+  imageFileInput.value = ''
+  if (!file) return
+
+  if (!file.type.startsWith('image/')) {
+    showToast('Please choose an image file.')
+    return
+  }
+  if (file.size > MAX_IMAGE_MB * 1024 * 1024) {
+    showToast(`Image is too large (max ${MAX_IMAGE_MB}MB).`)
+    return
+  }
+  if (!currentUser) {
+    showToast('You must be logged in to upload a photo.')
+    return
+  }
+
+  const originalLabel = uploadImageBtn.textContent
+  uploadImageBtn.disabled = true
+  uploadImageBtn.textContent = 'Uploading...'
+
+  try {
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
+    const path = `${currentUser.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+
+    const { error: uploadError } = await supabaseClient.storage.from(RECIPE_IMAGE_BUCKET).upload(path, file)
+    if (uploadError) throw uploadError
+
+    const { data } = supabaseClient.storage.from(RECIPE_IMAGE_BUCKET).getPublicUrl(path)
+    recipeImageInput.value = data.publicUrl
+    updateImagePreview()
+    showToast('Photo uploaded')
+  } catch (err) {
+    showToast('Upload failed: ' + (err.message || 'unknown error'))
+  } finally {
+    uploadImageBtn.disabled = false
+    uploadImageBtn.textContent = originalLabel
+  }
+})
+
+// ---------- Tags: pick from your existing tags, or add a new one ----------
+const tagsCombo = document.querySelector('.tags-combo')
+const tagsPanel = tagsCombo.querySelector('.combo-panel')
+const tagsOptionsEl = tagsCombo.querySelector('.combo-options')
+
+let currentTags = []
+
+function renderTagChips() {
+  tagsChipsEl.innerHTML = currentTags
+    .map(
+      (t, i) =>
+        `<span class="tag-chip">${escapeHtml(t)}<button type="button" class="remove-tag-btn" data-index="${i}" aria-label="Remove tag">&times;</button></span>`,
+    )
+    .join('')
+
+  tagsChipsEl.querySelectorAll('.remove-tag-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      currentTags.splice(Number(btn.dataset.index), 1)
+      renderTagChips()
+    })
+  })
+}
+
+function addTag(rawTag) {
+  const clean = rawTag.trim()
+  if (!clean) return
+  if (currentTags.some((t) => t.toLowerCase() === clean.toLowerCase())) return
+  currentTags.push(clean)
+  renderTagChips()
+}
+
+// All distinct tags the user has used across their own recipes, so
+// they can be picked from instead of retyped on every new recipe.
+function getAllUserTags() {
+  const set = new Set()
+  allRecipes.forEach((r) => (r.tags || []).forEach((t) => set.add(t)))
+  return Array.from(set).sort((a, b) => a.localeCompare(b))
+}
+
+function renderTagOptions(query) {
+  const q = (query || '').trim().toLowerCase()
+  const available = getAllUserTags().filter((t) => !currentTags.some((ct) => ct.toLowerCase() === t.toLowerCase()))
+  const matches = q ? available.filter((t) => t.toLowerCase().includes(q)) : available
+
+  if (matches.length) {
+    tagsOptionsEl.innerHTML = matches
+      .slice(0, 30)
+      .map((t) => `<div class="combo-option" data-value="${escapeAttr(t)}">${escapeHtml(t)}</div>`)
+      .join('')
+  } else if (q) {
+    tagsOptionsEl.innerHTML = `<div class="combo-option-empty">Press Enter to add "${escapeHtml(query.trim())}"</div>`
+  } else {
+    tagsOptionsEl.innerHTML = '<div class="combo-option-empty">No tags yet - type to add one</div>'
+  }
+
+  tagsOptionsEl.querySelectorAll('.combo-option').forEach((opt) => {
+    opt.addEventListener('click', () => {
+      addTag(opt.dataset.value)
+      tagsInput.value = ''
+      tagsPanel.classList.add('hidden')
+      tagsInput.focus()
+    })
+  })
+}
+
+tagsInput.addEventListener('focus', () => {
+  closeAllCombos(tagsCombo)
+  tagsPanel.classList.remove('hidden')
+  renderTagOptions(tagsInput.value)
+})
+tagsInput.addEventListener('input', () => {
+  tagsPanel.classList.remove('hidden')
+  renderTagOptions(tagsInput.value)
+})
+tagsInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault()
+    addTag(tagsInput.value)
+    tagsInput.value = ''
+    renderTagOptions('')
+  } else if (e.key === 'Backspace' && !tagsInput.value && currentTags.length) {
+    currentTags.pop()
+    renderTagChips()
+  }
+})
+
+function setTags(tags) {
+  currentTags = Array.isArray(tags) ? [...tags] : []
+  renderTagChips()
+  tagsInput.value = ''
+}
+
 // ---------- Instructions: reorderable numbered steps ----------
 function renumberInstructionRows() {
   const rows = Array.from(instructionsListEl.querySelectorAll('.instruction-row'))
@@ -587,8 +755,10 @@ function openAddModal() {
   modalTitle.textContent = 'Add Recipe'
   recipeForm.reset()
   recipeIdInput.value = ''
+  setTags([])
   setIngredientRows([{}])
   setInstructionRows([''])
+  updateImagePreview()
   deleteRecipeBtn.classList.add('hidden')
   recipeModal.classList.remove('hidden')
 }
@@ -599,9 +769,10 @@ function openEditModal(recipe) {
   recipeTitleInput.value = recipe.title || ''
   recipeSourceInput.value = recipe.source_url || ''
   recipeImageInput.value = recipe.image_url || ''
-  recipeTagsInput.value = (recipe.tags || []).join(', ')
+  setTags(recipe.tags || [])
   setIngredientRows(parseIngredients(recipe.ingredients))
   setInstructionRows(parseInstructions(recipe.instructions))
+  updateImagePreview()
   deleteRecipeBtn.classList.remove('hidden')
   viewModal.classList.add('hidden')
   recipeModal.classList.remove('hidden')
@@ -613,6 +784,11 @@ importUrlBtn.addEventListener('click', () => {
 
 recipeForm.addEventListener('submit', async (e) => {
   e.preventDefault()
+
+  if (tagsInput.value.trim()) {
+    addTag(tagsInput.value)
+    tagsInput.value = ''
+  }
 
   const ingredientRows = getIngredientRows()
   if (!ingredientRows.length) {
@@ -630,10 +806,7 @@ recipeForm.addEventListener('submit', async (e) => {
     title: recipeTitleInput.value.trim(),
     source_url: recipeSourceInput.value.trim() || null,
     image_url: recipeImageInput.value.trim() || null,
-    tags: recipeTagsInput.value
-      .split(',')
-      .map((t) => t.trim())
-      .filter(Boolean),
+    tags: currentTags.slice(),
     ingredients: JSON.stringify(ingredientRows),
     instructions: JSON.stringify(instructionSteps),
   }
