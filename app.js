@@ -611,6 +611,7 @@ const viewTitle = document.getElementById('view-title')
 const viewSource = document.getElementById('view-source')
 const viewTags = document.getElementById('view-tags')
 const viewIngredients = document.getElementById('view-ingredients')
+const unitToggleBtn = document.getElementById('unit-toggle-btn')
 const viewInstructions = document.getElementById('view-instructions')
 const viewFavoriteBtn = document.getElementById('view-favorite-btn')
 const viewShareBtn = document.getElementById('view-share-btn')
@@ -620,6 +621,28 @@ const editRecipeBtn = document.getElementById('edit-recipe-btn')
 const toast = document.getElementById('toast')
 
 let currentlyViewingId = null
+
+// ---------- Unit system toggle (metric / imperial / original) ----------
+let unitSystem = localStorage.getItem('recipeVaultUnitSystem') || 'original'
+
+function renderIngredientsList(recipe) {
+  viewIngredients.innerHTML = parseIngredients(recipe.ingredients)
+    .map((ing) => convertIngredientForDisplay(ing, unitSystem))
+    .map((ing) => `<li>${escapeHtml(formatIngredientLine(ing))}</li>`)
+    .join('')
+}
+
+function updateUnitToggleButton() {
+  unitToggleBtn.textContent = unitToggleLabel(unitSystem)
+}
+
+unitToggleBtn.addEventListener('click', () => {
+  unitSystem = nextUnitSystem(unitSystem)
+  localStorage.setItem('recipeVaultUnitSystem', unitSystem)
+  updateUnitToggleButton()
+  const r = allRecipes.find((x) => x.id === currentlyViewingId)
+  if (r) renderIngredientsList(r)
+})
 
 // ---------- Toast ----------
 function showToast(msg) {
@@ -1064,9 +1087,8 @@ function openViewModal(id) {
 
   viewTags.innerHTML = (r.tags || []).map((t) => `<span class="tag">${escapeHtml(t)}</span>`).join('')
 
-  viewIngredients.innerHTML = parseIngredients(r.ingredients)
-    .map((ing) => `<li>${escapeHtml(formatIngredientLine(ing))}</li>`)
-    .join('')
+  renderIngredientsList(r)
+  updateUnitToggleButton()
 
   viewInstructions.innerHTML = parseInstructions(r.instructions)
     .map((step) => `<li>${escapeHtml(step)}</li>`)

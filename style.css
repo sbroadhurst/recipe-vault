@@ -734,6 +734,20 @@ textarea:focus {
   line-height: 1.6;
 }
 
+.ingredients-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.ingredients-header h3 {
+  margin: 0;
+}
+.unit-toggle-btn {
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
 .toast {
   position: fixed;
   bottom: 24px;

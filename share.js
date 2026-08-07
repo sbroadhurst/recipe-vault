@@ -14,12 +14,20 @@ function showNotFound() {
   `
 }
 
-function renderSharedRecipe(r) {
-  const tagsHtml = (r.tags || []).map((t) => `<span class="tag">${escapeHtml(t)}</span>`).join('')
+let currentSharedRecipe = null
+let unitSystem = localStorage.getItem('recipeVaultUnitSystem') || 'original'
 
-  const ingredientsHtml = parseIngredients(r.ingredients)
+function renderIngredientsList(r) {
+  return parseIngredients(r.ingredients)
+    .map((ing) => convertIngredientForDisplay(ing, unitSystem))
     .map((ing) => `<li>${escapeHtml(formatIngredientLine(ing))}</li>`)
     .join('')
+}
+
+function renderSharedRecipe(r) {
+  currentSharedRecipe = r
+
+  const tagsHtml = (r.tags || []).map((t) => `<span class="tag">${escapeHtml(t)}</span>`).join('')
 
   const instructionsHtml = parseInstructions(r.instructions)
     .map((step) => `<li>${escapeHtml(step)}</li>`)
@@ -32,8 +40,11 @@ function renderSharedRecipe(r) {
     ${r.source_url ? `<a class="view-source" href="${escapeAttr(r.source_url)}" target="_blank" rel="noopener">Original recipe &#8599;</a>` : ''}
     <div class="tag-row">${tagsHtml}</div>
 
-    <h3>Ingredients</h3>
-    <ul>${ingredientsHtml}</ul>
+    <div class="ingredients-header">
+      <h3>Ingredients</h3>
+      <button type="button" id="unit-toggle-btn" class="link-btn unit-toggle-btn">${unitToggleLabel(unitSystem)}</button>
+    </div>
+    <ul id="share-ingredients">${renderIngredientsList(r)}</ul>
 
     <h3>Instructions</h3>
     <ol class="view-instructions">${instructionsHtml}</ol>
@@ -43,6 +54,13 @@ function renderSharedRecipe(r) {
       <a href="./index.html">Open Recipe Vault</a>
     </div>
   `
+
+  document.getElementById('unit-toggle-btn').addEventListener('click', () => {
+    unitSystem = nextUnitSystem(unitSystem)
+    localStorage.setItem('recipeVaultUnitSystem', unitSystem)
+    document.getElementById('unit-toggle-btn').textContent = unitToggleLabel(unitSystem)
+    document.getElementById('share-ingredients').innerHTML = renderIngredientsList(currentSharedRecipe)
+  })
 }
 
 async function loadSharedRecipe() {
