@@ -246,7 +246,6 @@ textarea:focus {
   max-width: 520px;
   max-height: 90vh;
   overflow-y: auto;
-  overflow-x: hidden;
   position: relative;
 }
 
@@ -300,14 +299,13 @@ textarea:focus {
   flex-direction: column;
   gap: 8px;
   max-width: 100%;
-  overflow-x: hidden;
 }
 
 .ingredient-row {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  align-items: center;
+  align-items: flex-start;
   max-width: 100%;
   min-width: 0;
 }
@@ -315,19 +313,6 @@ textarea:focus {
 .ingredient-row .ingredient-qty {
   width: 64px;
   flex: none;
-  padding: 10px;
-}
-
-.ingredient-row .ingredient-unit {
-  width: 100px;
-  flex: none;
-  padding: 10px 6px;
-}
-
-.ingredient-row .ingredient-name {
-  flex: 1 1 120px;
-  min-width: 0;
-  max-width: 100%;
   padding: 10px;
 }
 
@@ -352,13 +337,80 @@ textarea:focus {
   margin-top: 2px;
 }
 
-select.ingredient-unit {
+/* ---------- Searchable dropdown (combo) ---------- */
+.combo {
+  position: relative;
+  min-width: 0;
+}
+
+.unit-combo {
+  flex: none;
+  width: 100px;
+}
+
+.name-combo {
+  flex: 1 1 120px;
+  min-width: 0;
+}
+
+.combo-trigger {
+  width: 100%;
+  text-align: left;
   font-family: inherit;
   font-size: 0.9rem;
+  padding: 10px 8px;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: #fffefd;
   color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.combo-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(60, 40, 20, 0.18);
+  padding: 6px;
+  z-index: 30;
+}
+.combo-panel.hidden {
+  display: none !important;
+}
+
+.combo-search {
+  width: 100%;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+}
+
+.combo-options {
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.combo-option {
+  padding: 8px 10px;
+  font-size: 0.9rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.combo-option:hover {
+  background: #f1e6da;
+}
+
+.combo-option-empty {
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  color: var(--text-light);
 }
 
 #view-ingredients li {

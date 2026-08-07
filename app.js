@@ -38,7 +38,6 @@ const recipeImageInput = document.getElementById('recipe-image')
 const recipeTagsInput = document.getElementById('recipe-tags')
 const ingredientsListEl = document.getElementById('ingredients-list')
 const addIngredientBtn = document.getElementById('add-ingredient-btn')
-const ingredientSuggestions = document.getElementById('ingredient-suggestions')
 const instructionsListEl = document.getElementById('instructions-list')
 const addInstructionBtn = document.getElementById('add-instruction-btn')
 const deleteRecipeBtn = document.getElementById('delete-recipe-btn')
@@ -173,29 +172,158 @@ const COMMON_INGREDIENTS = [
   'Coconut milk',
 ]
 
-ingredientSuggestions.innerHTML = COMMON_INGREDIENTS.map(
-  (name) => `<option value="${escapeAttr(name)}"></option>`,
-).join('')
+// Closes every open combo dropdown except one whose trigger/input is
+// inside `exceptEl` (pass null to close everything).
+function closeAllCombos(exceptEl) {
+  document.querySelectorAll('.combo-panel').forEach((panel) => {
+    if (exceptEl && panel.parentElement.contains(exceptEl)) return
+    panel.classList.add('hidden')
+  })
+}
+
+document.addEventListener('click', (e) => {
+  if (e.target.closest('.combo')) return
+  closeAllCombos(null)
+})
+
+// A searchable, height-limited dropdown used in place of a native
+// <select>, so it can't be clipped or overflow the scrollable dialog.
+function createUnitCombo(selectedUnit) {
+  const combo = document.createElement('div')
+  combo.className = 'combo unit-combo'
+  combo.innerHTML = `
+    <button type="button" class="combo-trigger unit-trigger"></button>
+    <div class="combo-panel hidden">
+      <input type="text" class="combo-search" placeholder="Search units..." autocomplete="off" />
+      <div class="combo-options"></div>
+    </div>
+  `
+
+  const trigger = combo.querySelector('.unit-trigger')
+  const panel = combo.querySelector('.combo-panel')
+  const search = combo.querySelector('.combo-search')
+  const optionsEl = combo.querySelector('.combo-options')
+
+  function setValue(unit) {
+    trigger.dataset.value = unit
+    trigger.textContent = unit ? unit : '(unit)'
+  }
+
+  function renderOptions(query) {
+    const q = (query || '').trim().toLowerCase()
+    const matches = UNITS.filter((u) => {
+      const label = u ? u : '(unit)'
+      return label.toLowerCase().includes(q)
+    })
+    optionsEl.innerHTML = matches.length
+      ? matches
+          .map((u) => `<div class="combo-option" data-value="${escapeAttr(u)}">${u ? escapeHtml(u) : '(unit)'}</div>`)
+          .join('')
+      : '<div class="combo-option-empty">No matches</div>'
+
+    optionsEl.querySelectorAll('.combo-option').forEach((opt) => {
+      opt.addEventListener('click', () => {
+        setValue(opt.dataset.value)
+        panel.classList.add('hidden')
+      })
+    })
+  }
+
+  trigger.addEventListener('click', () => {
+    const willOpen = panel.classList.contains('hidden')
+    closeAllCombos(combo)
+    if (willOpen) {
+      panel.classList.remove('hidden')
+      search.value = ''
+      renderOptions('')
+      search.focus()
+    } else {
+      panel.classList.add('hidden')
+    }
+  })
+
+  search.addEventListener('input', () => renderOptions(search.value))
+
+  setValue(selectedUnit || '')
+  renderOptions('')
+
+  return combo
+}
+
+// A free-text ingredient name field with a height-limited, filtered
+// suggestion dropdown (replaces the native <input list> datalist,
+// which can't be styled, height-limited, or searched).
+function createNameCombo(selectedName) {
+  const combo = document.createElement('div')
+  combo.className = 'combo name-combo'
+  combo.innerHTML = `
+    <input type="text" class="ingredient-name" placeholder="Ingredient name" autocomplete="off" />
+    <div class="combo-panel hidden">
+      <div class="combo-options"></div>
+    </div>
+  `
+
+  const input = combo.querySelector('.ingredient-name')
+  const panel = combo.querySelector('.combo-panel')
+  const optionsEl = combo.querySelector('.combo-options')
+
+  function renderOptions(query) {
+    const q = (query || '').trim().toLowerCase()
+    const matches = q
+      ? COMMON_INGREDIENTS.filter((name) => name.toLowerCase().includes(q))
+      : COMMON_INGREDIENTS
+    optionsEl.innerHTML = matches.length
+      ? matches
+          .slice(0, 30)
+          .map((name) => `<div class="combo-option" data-value="${escapeAttr(name)}">${escapeHtml(name)}</div>`)
+          .join('')
+      : '<div class="combo-option-empty">No matches</div>'
+
+    optionsEl.querySelectorAll('.combo-option').forEach((opt) => {
+      opt.addEventListener('click', () => {
+        input.value = opt.dataset.value
+        panel.classList.add('hidden')
+      })
+    })
+  }
+
+  input.addEventListener('focus', () => {
+    closeAllCombos(combo)
+    panel.classList.remove('hidden')
+    renderOptions(input.value)
+  })
+  input.addEventListener('input', () => {
+    panel.classList.remove('hidden')
+    renderOptions(input.value)
+  })
+
+  input.value = selectedName || ''
+
+  return combo
+}
 
 function createIngredientRow(data) {
   const row = document.createElement('div')
   row.className = 'ingredient-row'
 
-  const unitOptions = UNITS.map(
-    (u) => `<option value="${escapeAttr(u)}">${u ? escapeHtml(u) : '(unit)'}</option>`,
-  ).join('')
+  const qty = document.createElement('input')
+  qty.type = 'text'
+  qty.className = 'ingredient-qty'
+  qty.placeholder = 'Qty'
+  qty.inputMode = 'decimal'
+  qty.value = data.qty || ''
 
-  row.innerHTML = `
-    <input type="text" class="ingredient-qty" placeholder="Qty" inputmode="decimal" />
-    <select class="ingredient-unit">${unitOptions}</select>
-    <input type="text" class="ingredient-name" list="ingredient-suggestions" placeholder="Ingredient name" />
-    <button type="button" class="remove-ingredient-btn" aria-label="Remove ingredient">&times;</button>
-  `
+  const unitCombo = createUnitCombo(data.unit)
+  const nameCombo = createNameCombo(data.name)
 
-  row.querySelector('.ingredient-qty').value = data.qty || ''
-  row.querySelector('.ingredient-unit').value = data.unit || ''
-  row.querySelector('.ingredient-name').value = data.name || ''
-  row.querySelector('.remove-ingredient-btn').addEventListener('click', () => row.remove())
+  const removeBtn = document.createElement('button')
+  removeBtn.type = 'button'
+  removeBtn.className = 'remove-ingredient-btn'
+  removeBtn.setAttribute('aria-label', 'Remove ingredient')
+  removeBtn.innerHTML = '&times;'
+  removeBtn.addEventListener('click', () => row.remove())
+
+  row.append(qty, unitCombo, nameCombo, removeBtn)
 
   return row
 }
@@ -216,7 +344,7 @@ function getIngredientRows() {
   return Array.from(ingredientsListEl.querySelectorAll('.ingredient-row'))
     .map((row) => ({
       qty: row.querySelector('.ingredient-qty').value.trim(),
-      unit: row.querySelector('.ingredient-unit').value.trim(),
+      unit: (row.querySelector('.unit-trigger').dataset.value || '').trim(),
       name: row.querySelector('.ingredient-name').value.trim(),
     }))
     .filter((r) => r.name)
