@@ -107,11 +107,21 @@
           <label>Tags</label>
           <div class="tags-field">
             <div id="tags-chips" class="tags-chips"></div>
-            <div class="combo tags-combo">
-              <input type="text" id="tags-input" class="tags-text-input" placeholder="Add a tag..." autocomplete="off" />
-              <div class="combo-panel hidden">
-                <div class="combo-options"></div>
+            <div class="tags-input-row">
+              <div class="combo tags-combo">
+                <input
+                  type="text"
+                  id="tags-input"
+                  class="tags-text-input"
+                  placeholder="Add a tag..."
+                  autocomplete="off"
+                  enterkeyhint="done"
+                />
+                <div class="combo-panel hidden">
+                  <div class="combo-options"></div>
+                </div>
               </div>
+              <button type="button" id="add-tag-btn" class="btn btn-secondary add-row-btn">Add</button>
             </div>
           </div>
 

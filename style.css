@@ -433,8 +433,20 @@ textarea:focus {
   color: var(--danger);
 }
 
+.tags-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
 .tags-combo {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
+}
+
+.tags-input-row .add-row-btn {
+  flex: none;
+  margin-top: 0;
 }
 
 .ingredients-list {

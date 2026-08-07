@@ -43,6 +43,7 @@ const removeImageBtn = document.getElementById('remove-image-btn')
 const imagePreview = document.getElementById('image-preview')
 const tagsChipsEl = document.getElementById('tags-chips')
 const tagsInput = document.getElementById('tags-input')
+const addTagBtn = document.getElementById('add-tag-btn')
 const ingredientsListEl = document.getElementById('ingredients-list')
 const addIngredientBtn = document.getElementById('add-ingredient-btn')
 const instructionsListEl = document.getElementById('instructions-list')
@@ -499,17 +500,38 @@ tagsInput.addEventListener('focus', () => {
   tagsPanel.classList.remove('hidden')
   renderTagOptions(tagsInput.value)
 })
-tagsInput.addEventListener('input', () => {
+
+function commitTagFromInput() {
+  // Strip a trailing newline/comma left behind by whatever triggered this
+  // (a comma key, or a mobile keyboard's Enter/Go inserting a line break).
+  addTag(tagsInput.value.replace(/[\n,]+$/, ''))
+  tagsInput.value = ''
+  renderTagOptions('')
+}
+
+tagsInput.addEventListener('input', (e) => {
+  // Many mobile keyboards (notably Android/Gboard) don't fire a normal
+  // keydown for their Enter/Go key on a plain text input - they only
+  // fire this 'input' event with inputType "insertLineBreak". Catching
+  // it here is what makes Enter-to-add-a-tag work on phones.
+  if (e.inputType === 'insertLineBreak') {
+    commitTagFromInput()
+    return
+  }
   tagsPanel.classList.remove('hidden')
   renderTagOptions(tagsInput.value)
 })
+
 tagsInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' || e.key === ',') {
+  if (e.key === 'Enter' || e.keyCode === 13 || e.key === ',') {
     e.preventDefault()
-    addTag(tagsInput.value)
-    tagsInput.value = ''
-    renderTagOptions('')
+    commitTagFromInput()
   }
+})
+
+addTagBtn.addEventListener('click', () => {
+  commitTagFromInput()
+  tagsInput.focus()
 })
 
 function setTags(tags) {
@@ -945,6 +967,16 @@ importUrlBtn.addEventListener('click', async () => {
 
 recipeForm.addEventListener('submit', async (e) => {
   e.preventDefault()
+
+  // Some mobile keyboards trigger the form's implicit submit when Enter
+  // is pressed in the tag field instead of (or in addition to) the input
+  // event our own handler listens for. e.submitter is only set when a
+  // real button was clicked, so its absence here means Enter did this -
+  // treat it as "add tag," not "save recipe."
+  if (!e.submitter && document.activeElement === tagsInput) {
+    commitTagFromInput()
+    return
+  }
 
   if (tagsInput.value.trim()) {
     addTag(tagsInput.value)
