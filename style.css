@@ -337,7 +337,7 @@ textarea:focus {
   color: var(--danger);
 }
 
-.add-ingredient-btn {
+.add-row-btn {
   align-self: flex-start;
   font-size: 0.85rem;
   padding: 8px 14px;
@@ -357,6 +357,65 @@ select.ingredient-unit {
   margin-bottom: 2px;
 }
 
+.instructions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.instruction-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.instruction-row .step-number {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 6px;
+}
+
+.instruction-row .instruction-text {
+  flex: 1;
+  resize: vertical;
+}
+
+.instruction-controls {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.instruction-controls button {
+  background: none;
+  border: none;
+  color: var(--text-light);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 3px 8px;
+}
+.instruction-controls button:hover:not(:disabled) {
+  color: var(--accent-dark);
+}
+.instruction-controls .remove-instruction-btn:hover:not(:disabled) {
+  color: var(--danger);
+}
+.instruction-controls button:disabled {
+  color: var(--border);
+  cursor: default;
+}
+
 .view-image {
   width: 100%;
   max-height: 220px;
@@ -371,8 +430,11 @@ select.ingredient-unit {
   font-size: 0.9rem;
 }
 .view-instructions {
-  white-space: pre-wrap;
-  line-height: 1.5;
+  padding-left: 20px;
+  line-height: 1.6;
+}
+.view-instructions li {
+  margin-bottom: 6px;
 }
 .tag-row {
   display: flex;

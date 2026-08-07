@@ -97,12 +97,15 @@
 
           <label>Ingredients</label>
           <div id="ingredients-list" class="ingredients-list"></div>
-          <button type="button" id="add-ingredient-btn" class="btn btn-secondary add-ingredient-btn">
+          <button type="button" id="add-ingredient-btn" class="btn btn-secondary add-row-btn">
             + Add Ingredient
           </button>
 
           <label>Instructions</label>
-          <textarea id="recipe-instructions" rows="8" required></textarea>
+          <div id="instructions-list" class="instructions-list"></div>
+          <button type="button" id="add-instruction-btn" class="btn btn-secondary add-row-btn">
+            + Add Step
+          </button>
 
           <div class="modal-actions">
             <button type="button" id="delete-recipe-btn" class="btn btn-danger hidden">Delete</button>
@@ -125,7 +128,7 @@
         <ul id="view-ingredients"></ul>
 
         <h3>Instructions</h3>
-        <p id="view-instructions" class="view-instructions"></p>
+        <ol id="view-instructions" class="view-instructions"></ol>
 
         <button id="edit-recipe-btn" class="btn btn-secondary">Edit</button>
       </div>

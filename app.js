@@ -39,7 +39,8 @@ const recipeTagsInput = document.getElementById('recipe-tags')
 const ingredientsListEl = document.getElementById('ingredients-list')
 const addIngredientBtn = document.getElementById('add-ingredient-btn')
 const ingredientSuggestions = document.getElementById('ingredient-suggestions')
-const recipeInstructionsInput = document.getElementById('recipe-instructions')
+const instructionsListEl = document.getElementById('instructions-list')
+const addInstructionBtn = document.getElementById('add-instruction-btn')
 const deleteRecipeBtn = document.getElementById('delete-recipe-btn')
 const importUrlBtn = document.getElementById('import-url-btn')
 
@@ -243,6 +244,87 @@ function formatIngredientLine(ing) {
   return [ing.qty, ing.unit, ing.name].filter(Boolean).join(' ')
 }
 
+// ---------- Instructions: reorderable numbered steps ----------
+function renumberInstructionRows() {
+  const rows = Array.from(instructionsListEl.querySelectorAll('.instruction-row'))
+  rows.forEach((row, idx) => {
+    row.querySelector('.step-number').textContent = String(idx + 1)
+    row.querySelector('.move-up-btn').disabled = idx === 0
+    row.querySelector('.move-down-btn').disabled = idx === rows.length - 1
+  })
+}
+
+function createInstructionRow(text) {
+  const row = document.createElement('div')
+  row.className = 'instruction-row'
+
+  row.innerHTML = `
+    <span class="step-number">1</span>
+    <textarea class="instruction-text" rows="2" placeholder="Describe this step"></textarea>
+    <div class="instruction-controls">
+      <button type="button" class="move-up-btn" aria-label="Move step up">&uarr;</button>
+      <button type="button" class="move-down-btn" aria-label="Move step down">&darr;</button>
+      <button type="button" class="remove-instruction-btn" aria-label="Remove step">&times;</button>
+    </div>
+  `
+
+  row.querySelector('.instruction-text').value = text || ''
+
+  row.querySelector('.move-up-btn').addEventListener('click', () => {
+    const prev = row.previousElementSibling
+    if (prev) row.parentElement.insertBefore(row, prev)
+    renumberInstructionRows()
+  })
+  row.querySelector('.move-down-btn').addEventListener('click', () => {
+    const next = row.nextElementSibling
+    if (next) row.parentElement.insertBefore(next, row)
+    renumberInstructionRows()
+  })
+  row.querySelector('.remove-instruction-btn').addEventListener('click', () => {
+    row.remove()
+    renumberInstructionRows()
+  })
+
+  return row
+}
+
+addInstructionBtn.addEventListener('click', () => {
+  instructionsListEl.appendChild(createInstructionRow(''))
+  renumberInstructionRows()
+})
+
+function setInstructionRows(steps) {
+  instructionsListEl.innerHTML = ''
+  const list = steps && steps.length ? steps : ['']
+  for (const step of list) {
+    instructionsListEl.appendChild(createInstructionRow(step))
+  }
+  renumberInstructionRows()
+}
+
+function getInstructionSteps() {
+  return Array.from(instructionsListEl.querySelectorAll('.instruction-text'))
+    .map((el) => el.value.trim())
+    .filter(Boolean)
+}
+
+// Parses the instructions column, which stores a JSON array of step
+// strings. Falls back to treating older plain-text instructions
+// (one block of text) as a set of newline-separated steps.
+function parseInstructions(raw) {
+  if (!raw) return []
+  try {
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) return parsed
+  } catch (e) {
+    // not JSON - legacy plain text
+  }
+  return raw
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+}
+
 const viewModal = document.getElementById('view-modal')
 const closeViewBtn = document.getElementById('close-view-btn')
 const viewImage = document.getElementById('view-image')
@@ -378,6 +460,7 @@ function openAddModal() {
   recipeForm.reset()
   recipeIdInput.value = ''
   setIngredientRows([{}])
+  setInstructionRows([''])
   deleteRecipeBtn.classList.add('hidden')
   recipeModal.classList.remove('hidden')
 }
@@ -390,7 +473,7 @@ function openEditModal(recipe) {
   recipeImageInput.value = recipe.image_url || ''
   recipeTagsInput.value = (recipe.tags || []).join(', ')
   setIngredientRows(parseIngredients(recipe.ingredients))
-  recipeInstructionsInput.value = recipe.instructions || ''
+  setInstructionRows(parseInstructions(recipe.instructions))
   deleteRecipeBtn.classList.remove('hidden')
   viewModal.classList.add('hidden')
   recipeModal.classList.remove('hidden')
@@ -409,6 +492,12 @@ recipeForm.addEventListener('submit', async (e) => {
     return
   }
 
+  const instructionSteps = getInstructionSteps()
+  if (!instructionSteps.length) {
+    showToast('Add at least one instruction step.')
+    return
+  }
+
   const payload = {
     title: recipeTitleInput.value.trim(),
     source_url: recipeSourceInput.value.trim() || null,
@@ -418,7 +507,7 @@ recipeForm.addEventListener('submit', async (e) => {
       .map((t) => t.trim())
       .filter(Boolean),
     ingredients: JSON.stringify(ingredientRows),
-    instructions: recipeInstructionsInput.value.trim(),
+    instructions: JSON.stringify(instructionSteps),
   }
 
   const id = recipeIdInput.value
@@ -484,7 +573,9 @@ function openViewModal(id) {
     .map((ing) => `<li>${escapeHtml(formatIngredientLine(ing))}</li>`)
     .join('')
 
-  viewInstructions.textContent = r.instructions || ''
+  viewInstructions.innerHTML = parseInstructions(r.instructions)
+    .map((step) => `<li>${escapeHtml(step)}</li>`)
+    .join('')
 
   viewModal.classList.remove('hidden')
 }
