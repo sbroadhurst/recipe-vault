@@ -15,7 +15,7 @@ Right now you're deploying by dragging the folder onto Netlify each time. This c
 On the new repo's page:
 
 1. Click **"uploading an existing file"** (a link in the setup instructions).
-2. Open the `recipe-vault` folder on your computer and select **all the files and the `icons` folder inside it** (not the `recipe-vault` folder itself — you want its *contents* at the top level of the repo).
+2. Open the `recipe-vault` folder on your computer and select **all the files and the `icons` folder inside it** (not the `recipe-vault` folder itself — you want its _contents_ at the top level of the repo).
 3. Drag them all into the GitHub upload box.
 4. Scroll down and click **Commit changes**.
 

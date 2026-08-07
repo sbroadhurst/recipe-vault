@@ -19,8 +19,8 @@ This app is done and ready to go live. It needs two free accounts: **Supabase** 
 2. Replace the two placeholder values with the Project URL and anon key from step 1.6:
 
 ```js
-window.SUPABASE_URL = "https://xxxxxxx.supabase.co";
-window.SUPABASE_ANON_KEY = "eyJ...";
+window.SUPABASE_URL = 'https://xxxxxxx.supabase.co'
+window.SUPABASE_ANON_KEY = 'eyJ...'
 ```
 
 3. Save the file.
