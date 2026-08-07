@@ -1,7 +1,7 @@
 // Minimal app-shell cache so the app installs and opens offline.
 // API calls to Supabase are never cached - they always hit the network.
 
-const CACHE_NAME = 'recipe-vault-v1'
+const CACHE_NAME = 'recipe-vault-v2'
 const APP_SHELL = [
   './',
   './index.html',
@@ -30,19 +30,19 @@ self.addEventListener('fetch', (event) => {
 
   // Never intercept cross-origin requests (Supabase API, CDN scripts on first load, etc.)
   if (url.origin !== self.location.origin) return
+  if (event.request.method !== 'GET') return
 
+  // Network-first: always fetch the latest app shell when online, so
+  // updates show up immediately after a redeploy instead of getting
+  // stuck on whatever was cached the first time the app was opened.
+  // Only fall back to the cached copy when there's no network.
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return (
-        cached ||
-        fetch(event.request)
-          .then((response) => {
-            const clone = response.clone()
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone))
-            return response
-          })
-          .catch(() => cached)
-      )
-    }),
+    fetch(event.request)
+      .then((response) => {
+        const clone = response.clone()
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone))
+        return response
+      })
+      .catch(() => caches.match(event.request)),
   )
 })
