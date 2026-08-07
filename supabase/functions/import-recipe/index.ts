@@ -184,28 +184,45 @@ Deno.serve(async (req: Request) => {
   try {
     const { url } = await req.json()
     if (!url || typeof url !== 'string') {
-      return jsonResponse({ error: 'Missing "url" in request body.' }, 400)
+      // Note: this and every other "handled" failure below responds with
+      // HTTP 200 (not 4xx/5xx) on purpose. supabase-js's functions.invoke()
+      // discards the response body on non-2xx statuses and replaces it with
+      // a generic error, so the only reliable way to hand a useful message
+      // back to the client is to keep the status 200 and signal failure via
+      // the "error" field in the JSON body instead.
+      return jsonResponse({ error: 'Missing "url" in request body.' })
     }
 
     let parsedUrl: URL
     try {
       parsedUrl = new URL(url)
     } catch {
-      return jsonResponse({ error: 'That does not look like a valid URL.' }, 400)
+      return jsonResponse({ error: 'That does not look like a valid URL.' })
     }
     if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
-      return jsonResponse({ error: 'Only http/https URLs are supported.' }, 400)
+      return jsonResponse({ error: 'Only http/https URLs are supported.' })
     }
 
+    // Identify honestly as a bot rather than impersonating a browser.
+    // Pretending to be Chrome without matching everything else a real
+    // Chrome connection looks like (TLS fingerprint, timing, JS
+    // execution) can read as *more* suspicious to bot-detection systems
+    // than a plainly-labeled crawler - this made things worse in testing.
     const pageRes = await fetch(parsedUrl.toString(), {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; RecipeVaultBot/1.0)',
-        Accept: 'text/html',
+        'User-Agent': 'Mozilla/5.0 (compatible; RecipeVaultBot/1.0; +https://recipevault.app/about)',
+        Accept: 'text/html,application/xhtml+xml',
+        'Accept-Language': 'en-US,en;q=0.9',
       },
     })
 
     if (!pageRes.ok) {
-      return jsonResponse({ error: `Could not fetch that page (status ${pageRes.status}).` }, 502)
+      if (pageRes.status === 403 || pageRes.status === 429) {
+        return jsonResponse({
+          error: 'This site blocked automated access to that page. It may only allow real browsers to view it.',
+        })
+      }
+      return jsonResponse({ error: `Could not fetch that page (status ${pageRes.status}).` })
     }
 
     const html = await pageRes.text()
@@ -229,10 +246,9 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!recipeNode) {
-      return jsonResponse(
-        { error: "Couldn't find recipe data on that page. Some sites don't publish it in a readable format." },
-        404,
-      )
+      return jsonResponse({
+        error: "Couldn't find recipe data on that page. Some sites don't publish it in a readable format.",
+      })
     }
 
     const title = typeof recipeNode.name === 'string' ? recipeNode.name : ''
@@ -250,6 +266,6 @@ Deno.serve(async (req: Request) => {
       source_url: parsedUrl.toString(),
     })
   } catch (_err) {
-    return jsonResponse({ error: 'Something went wrong importing that recipe.' }, 500)
+    return jsonResponse({ error: 'Something went wrong importing that recipe.' })
   }
 })

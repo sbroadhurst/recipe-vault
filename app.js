@@ -889,9 +889,32 @@ importUrlBtn.addEventListener('click', async () => {
 
   try {
     const { data, error } = await supabaseClient.functions.invoke('import-recipe', { body: { url } })
-    if (error) throw error
+
+    if (error) {
+      // If the Edge Function responded with a non-2xx status, supabase-js
+      // discards the JSON body and gives us a generic error - try to read
+      // the real message back out of the raw response if it's there.
+      let detail = error.message || 'unknown error'
+      if (error.context && typeof error.context.text === 'function') {
+        try {
+          const bodyText = await error.context.text()
+          const parsed = JSON.parse(bodyText)
+          if (parsed && parsed.error) detail = parsed.error
+        } catch (e) {
+          // raw body wasn't JSON we could parse - fall back to the generic message
+        }
+      }
+      throw new Error(detail)
+    }
+
     if (data && data.error) {
       showToast(data.error)
+      return
+    }
+
+    const gotSomething = data && (data.title || data.image_url || data.ingredients?.length || data.instructions?.length)
+    if (!gotSomething) {
+      showToast('Import returned nothing usable. Check that the import-recipe Edge Function was deployed correctly.')
       return
     }
 
