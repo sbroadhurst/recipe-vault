@@ -13,6 +13,8 @@ create table if not exists recipes (
   source_url text,
   image_url text,
   tags text[] default '{}',
+  is_favorite boolean not null default false,
+  is_public boolean not null default false,
   created_at timestamptz not null default now()
 );
 
@@ -34,3 +36,9 @@ create policy "Users can update their own recipes"
 create policy "Users can delete their own recipes"
   on recipes for delete
   using (auth.uid() = user_id);
+
+-- Anyone (including logged-out visitors) can view a recipe that has
+-- been marked shareable, for the public share-link page
+create policy "Public can view shared recipes"
+  on recipes for select
+  using (is_public = true);

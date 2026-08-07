@@ -57,6 +57,7 @@
 
       <div class="toolbar">
         <input type="search" id="search-input" placeholder="Search your recipes..." />
+        <button type="button" id="favorites-filter-btn" class="btn btn-ghost favorites-toggle">☆ Favorites</button>
       </div>
 
       <div id="tag-filter-bar" class="tag-filter-bar"></div>
@@ -148,7 +149,14 @@
         <h3>Instructions</h3>
         <ol id="view-instructions" class="view-instructions"></ol>
 
-        <button id="edit-recipe-btn" class="btn btn-secondary">Edit</button>
+        <div class="view-actions">
+          <button id="view-favorite-btn" type="button" class="btn btn-secondary favorites-toggle">☆ Favorite</button>
+          <button id="view-share-btn" type="button" class="btn btn-secondary">Share</button>
+          <button id="edit-recipe-btn" class="btn btn-secondary">Edit</button>
+        </div>
+        <button id="view-stop-sharing-btn" type="button" class="link-btn stop-sharing-btn hidden">
+          Stop sharing this recipe
+        </button>
       </div>
     </div>
 
@@ -156,6 +164,7 @@
 
     <script src="config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="utils.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

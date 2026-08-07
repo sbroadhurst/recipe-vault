@@ -1,12 +1,13 @@
 // Minimal app-shell cache so the app installs and opens offline.
 // API calls to Supabase are never cached - they always hit the network.
 
-const CACHE_NAME = 'recipe-vault-v2'
+const CACHE_NAME = 'recipe-vault-v3'
 const APP_SHELL = [
   './',
   './index.html',
   './style.css',
   './app.js',
+  './utils.js',
   './config.js',
   './manifest.json',
   './icons/icon-192.png',

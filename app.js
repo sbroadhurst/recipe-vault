@@ -27,6 +27,7 @@ const searchInput = document.getElementById('search-input')
 const recipeGrid = document.getElementById('recipe-grid')
 const emptyState = document.getElementById('empty-state')
 const tagFilterBar = document.getElementById('tag-filter-bar')
+const favoritesFilterBtn = document.getElementById('favorites-filter-btn')
 
 const recipeModal = document.getElementById('recipe-modal')
 const closeModalBtn = document.getElementById('close-modal-btn')
@@ -356,28 +357,6 @@ function getIngredientRows() {
     .filter((r) => r.name)
 }
 
-// Parses the ingredients column, which stores a JSON array of
-// { qty, unit, name }. Falls back to treating older plain-text,
-// newline-separated ingredients (name only) as legacy data.
-function parseIngredients(raw) {
-  if (!raw) return []
-  try {
-    const parsed = JSON.parse(raw)
-    if (Array.isArray(parsed)) return parsed
-  } catch (e) {
-    // not JSON - legacy plain text
-  }
-  return raw
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((name) => ({ qty: '', unit: '', name }))
-}
-
-function formatIngredientLine(ing) {
-  return [ing.qty, ing.unit, ing.name].filter(Boolean).join(' ')
-}
-
 // ---------- Recipe photo: upload from device or paste a URL ----------
 const RECIPE_IMAGE_BUCKET = 'recipe-images'
 const MAX_IMAGE_MB = 8
@@ -602,23 +581,6 @@ function getInstructionSteps() {
     .filter(Boolean)
 }
 
-// Parses the instructions column, which stores a JSON array of step
-// strings. Falls back to treating older plain-text instructions
-// (one block of text) as a set of newline-separated steps.
-function parseInstructions(raw) {
-  if (!raw) return []
-  try {
-    const parsed = JSON.parse(raw)
-    if (Array.isArray(parsed)) return parsed
-  } catch (e) {
-    // not JSON - legacy plain text
-  }
-  return raw
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-}
-
 const viewModal = document.getElementById('view-modal')
 const closeViewBtn = document.getElementById('close-view-btn')
 const viewImage = document.getElementById('view-image')
@@ -627,6 +589,9 @@ const viewSource = document.getElementById('view-source')
 const viewTags = document.getElementById('view-tags')
 const viewIngredients = document.getElementById('view-ingredients')
 const viewInstructions = document.getElementById('view-instructions')
+const viewFavoriteBtn = document.getElementById('view-favorite-btn')
+const viewShareBtn = document.getElementById('view-share-btn')
+const viewStopSharingBtn = document.getElementById('view-stop-sharing-btn')
 const editRecipeBtn = document.getElementById('edit-recipe-btn')
 
 const toast = document.getElementById('toast')
@@ -694,6 +659,12 @@ supabaseClient.auth.onAuthStateChange((_event, session) => {
 
 // ---------- Recipes: load & render ----------
 let selectedFilterTags = new Set()
+let showFavoritesOnly = false
+
+// Stable sort (favorites first, otherwise keeps existing created_at order)
+function sortFavoritesFirst(recipes) {
+  recipes.sort((a, b) => (b.is_favorite ? 1 : 0) - (a.is_favorite ? 1 : 0))
+}
 
 async function loadRecipes() {
   const { data, error } = await supabaseClient.from('recipes').select('*').order('created_at', { ascending: false })
@@ -703,6 +674,7 @@ async function loadRecipes() {
     return
   }
   allRecipes = data || []
+  sortFavoritesFirst(allRecipes)
   // Drop any filter tags that no longer exist on any recipe.
   const stillValid = new Set(getAllUserTags())
   selectedFilterTags.forEach((t) => {
@@ -711,6 +683,30 @@ async function loadRecipes() {
   renderTagFilterBar()
   applyFilters()
 }
+
+async function toggleFavorite(id) {
+  const recipe = allRecipes.find((r) => r.id === id)
+  if (!recipe) return
+
+  const newValue = !recipe.is_favorite
+  const { error } = await supabaseClient.from('recipes').update({ is_favorite: newValue }).eq('id', id)
+  if (error) {
+    showToast('Failed to update favorite: ' + error.message)
+    return
+  }
+
+  recipe.is_favorite = newValue
+  sortFavoritesFirst(allRecipes)
+  applyFilters()
+  if (currentlyViewingId === id) updateViewFavoriteButton(recipe)
+}
+
+favoritesFilterBtn.addEventListener('click', () => {
+  showFavoritesOnly = !showFavoritesOnly
+  favoritesFilterBtn.classList.toggle('active', showFavoritesOnly)
+  favoritesFilterBtn.textContent = showFavoritesOnly ? '★ Favorites' : '☆ Favorites'
+  applyFilters()
+})
 
 function renderTagFilterBar() {
   const tags = getAllUserTags()
@@ -758,6 +754,8 @@ function applyFilters() {
   const q = searchInput.value.trim().toLowerCase()
 
   const filtered = allRecipes.filter((r) => {
+    if (showFavoritesOnly && !r.is_favorite) return false
+
     if (selectedFilterTags.size) {
       const recipeTags = r.tags || []
       const hasSelectedTag = recipeTags.some((t) => selectedFilterTags.has(t))
@@ -791,12 +789,25 @@ function renderRecipes(recipes) {
       .join('')
 
     card.innerHTML = `
-      ${r.image_url ? `<img class="recipe-card-img" src="${escapeAttr(r.image_url)}" onerror="this.style.display='none'" />` : `<div class="recipe-card-img"></div>`}
+      <div class="recipe-card-media">
+        ${r.image_url ? `<img class="recipe-card-img" src="${escapeAttr(r.image_url)}" onerror="this.style.display='none'" />` : `<div class="recipe-card-img"></div>`}
+        <button
+          type="button"
+          class="card-favorite-btn${r.is_favorite ? ' active' : ''}"
+          aria-label="${r.is_favorite ? 'Remove from favorites' : 'Add to favorites'}"
+        >${r.is_favorite ? '★' : '☆'}</button>
+      </div>
       <div class="recipe-card-body">
         <p class="recipe-card-title">${escapeHtml(r.title)}</p>
         <div class="recipe-card-tags">${tags}</div>
       </div>
     `
+
+    card.querySelector('.card-favorite-btn').addEventListener('click', (e) => {
+      e.stopPropagation()
+      toggleFavorite(r.id)
+    })
+
     recipeGrid.appendChild(card)
   }
 }
@@ -934,22 +945,91 @@ function openViewModal(id) {
     .map((step) => `<li>${escapeHtml(step)}</li>`)
     .join('')
 
+  updateViewFavoriteButton(r)
+  updateViewShareState(r)
+
   viewModal.classList.remove('hidden')
 }
+
+function updateViewFavoriteButton(recipe) {
+  const fav = !!recipe.is_favorite
+  viewFavoriteBtn.textContent = fav ? '★ Favorited' : '☆ Favorite'
+  viewFavoriteBtn.classList.toggle('active', fav)
+}
+
+viewFavoriteBtn.addEventListener('click', () => {
+  if (currentlyViewingId) toggleFavorite(currentlyViewingId)
+})
+
+function updateViewShareState(recipe) {
+  viewStopSharingBtn.classList.toggle('hidden', !recipe.is_public)
+}
+
+function getShareUrl(id) {
+  return `${window.location.origin}${window.location.pathname.replace(/index\.html$/, '')}share.html?id=${id}`
+}
+
+async function shareRecipe(id) {
+  const recipe = allRecipes.find((r) => r.id === id)
+  if (!recipe) return
+
+  if (!recipe.is_public) {
+    const { error } = await supabaseClient.from('recipes').update({ is_public: true }).eq('id', id)
+    if (error) {
+      showToast('Failed to enable sharing: ' + error.message)
+      return
+    }
+    recipe.is_public = true
+    if (currentlyViewingId === id) updateViewShareState(recipe)
+  }
+
+  const shareUrl = getShareUrl(id)
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: recipe.title, text: `Check out this recipe: ${recipe.title}`, url: shareUrl })
+    } catch (e) {
+      // user cancelled the share sheet - not an error
+    }
+  } else if (navigator.clipboard) {
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      showToast('Link copied to clipboard')
+    } catch (e) {
+      showToast(shareUrl)
+    }
+  } else {
+    showToast(shareUrl)
+  }
+}
+
+async function stopSharing(id) {
+  const recipe = allRecipes.find((r) => r.id === id)
+  if (!recipe) return
+
+  const { error } = await supabaseClient.from('recipes').update({ is_public: false }).eq('id', id)
+  if (error) {
+    showToast('Failed to stop sharing: ' + error.message)
+    return
+  }
+  recipe.is_public = false
+  if (currentlyViewingId === id) updateViewShareState(recipe)
+  showToast('Stopped sharing this recipe')
+}
+
+viewShareBtn.addEventListener('click', () => {
+  if (currentlyViewingId) shareRecipe(currentlyViewingId)
+})
+
+viewStopSharingBtn.addEventListener('click', () => {
+  if (currentlyViewingId) stopSharing(currentlyViewingId)
+})
 
 closeViewBtn.addEventListener('click', () => viewModal.classList.add('hidden'))
 editRecipeBtn.addEventListener('click', () => {
   const r = allRecipes.find((x) => x.id === currentlyViewingId)
   if (r) openEditModal(r)
 })
-
-// ---------- Helpers ----------
-function escapeHtml(str) {
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-}
-function escapeAttr(str) {
-  return escapeHtml(str)
-}
 
 // ---------- Service worker registration ----------
 if ('serviceWorker' in navigator) {
