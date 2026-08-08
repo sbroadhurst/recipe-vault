@@ -45,7 +45,6 @@ const tagsChipsEl = document.getElementById('tags-chips')
 const tagsInput = document.getElementById('tags-input')
 const addTagBtn = document.getElementById('add-tag-btn')
 const ingredientsListEl = document.getElementById('ingredients-list')
-const addIngredientBtn = document.getElementById('add-ingredient-btn')
 const addSectionBtn = document.getElementById('add-section-btn')
 const instructionsListEl = document.getElementById('instructions-list')
 const addInstructionBtn = document.getElementById('add-instruction-btn')
@@ -312,6 +311,31 @@ function createNameCombo(selectedName) {
   return combo
 }
 
+// Regenerates every ingredient row's "move to section" dropdown so its
+// options match the current set of sections (in case one was renamed,
+// added, or removed since the row was created), and shows/hides those
+// dropdowns entirely when there's nothing to move between yet.
+function refreshIngredientGroups() {
+  const groups = Array.from(ingredientsListEl.children)
+  ingredientsListEl.classList.toggle('has-sections', groups.length > 1)
+
+  const options = groups.map((group) => {
+    const id = group.dataset.sectionId
+    if (id === 'unsectioned') return { id, label: 'No section' }
+    const input = group.querySelector('.section-label-input')
+    const label = (input && input.value.trim()) || 'Untitled section'
+    return { id, label }
+  })
+
+  ingredientsListEl.querySelectorAll('.move-to-select').forEach((select) => {
+    const parentGroup = select.closest('.ingredient-group')
+    const currentId = parentGroup ? parentGroup.dataset.sectionId : 'unsectioned'
+    select.innerHTML = options
+      .map((o) => `<option value="${escapeAttr(o.id)}"${o.id === currentId ? ' selected' : ''}>${escapeHtml(o.label)}</option>`)
+      .join('')
+  })
+}
+
 function createIngredientRow(data) {
   const row = document.createElement('div')
   row.className = 'ingredient-row'
@@ -328,6 +352,21 @@ function createIngredientRow(data) {
   const unitCombo = createUnitCombo(data.unit)
   const nameCombo = createNameCombo(data.name)
 
+  // Lets an ingredient be reassigned to any section (or back to "No
+  // section") without retyping it - populated/kept in sync by
+  // refreshIngredientGroups(). Hidden until a recipe actually has more
+  // than one section.
+  const moveToSelect = document.createElement('select')
+  moveToSelect.className = 'move-to-select'
+  moveToSelect.setAttribute('aria-label', 'Move ingredient to section')
+  moveToSelect.addEventListener('change', () => {
+    const targetGroup = Array.from(ingredientsListEl.children).find(
+      (g) => g.dataset.sectionId === moveToSelect.value,
+    )
+    if (targetGroup) targetGroup.querySelector('.ingredient-group-rows').appendChild(row)
+    refreshIngredientGroups()
+  })
+
   const removeBtn = document.createElement('button')
   removeBtn.type = 'button'
   removeBtn.className = 'remove-ingredient-btn'
@@ -335,69 +374,127 @@ function createIngredientRow(data) {
   removeBtn.innerHTML = '&times;'
   removeBtn.addEventListener('click', () => row.remove())
 
-  row.append(qty, unitCombo, nameCombo, removeBtn)
+  row.append(qty, unitCombo, nameCombo, moveToSelect, removeBtn)
 
   return row
 }
 
-// A labeled divider row for grouping ingredients - e.g. "Crust" and
-// "Filling" for a recipe with multiple components. Saved alongside the
-// ingredient rows as { section: "label" } in list order.
-function createSectionRow(label) {
-  const row = document.createElement('div')
-  row.className = 'section-row'
+let sectionIdCounter = 0
 
-  const input = document.createElement('input')
-  input.type = 'text'
-  input.className = 'section-label-input'
-  input.placeholder = 'Section name, e.g. Crust'
-  input.value = label || ''
+// A group is one section's worth of ingredients: an optional labeled
+// header (the "unsectioned" group at the top has none), its own rows
+// container, and its own "+ Add Ingredient" button. sectionLabel is
+// null for the unsectioned group, or a string (possibly empty, while
+// the user is still typing a name) for a real section.
+function createIngredientGroup(sectionLabel) {
+  const group = document.createElement('div')
+  group.className = 'ingredient-group'
+  group.dataset.sectionId = sectionLabel === null ? 'unsectioned' : `sec-${++sectionIdCounter}`
 
-  const removeBtn = document.createElement('button')
-  removeBtn.type = 'button'
-  removeBtn.className = 'remove-ingredient-btn'
-  removeBtn.setAttribute('aria-label', 'Remove section')
-  removeBtn.innerHTML = '&times;'
-  removeBtn.addEventListener('click', () => row.remove())
+  const rowsEl = document.createElement('div')
+  rowsEl.className = 'ingredient-group-rows'
 
-  row.append(input, removeBtn)
-  return row
+  if (sectionLabel !== null) {
+    const header = document.createElement('div')
+    header.className = 'section-header-row'
+
+    const input = document.createElement('input')
+    input.type = 'text'
+    input.className = 'section-label-input'
+    input.placeholder = 'Section name, e.g. Crust'
+    input.value = sectionLabel || ''
+    input.addEventListener('input', refreshIngredientGroups)
+
+    const removeBtn = document.createElement('button')
+    removeBtn.type = 'button'
+    removeBtn.className = 'remove-ingredient-btn'
+    removeBtn.setAttribute('aria-label', 'Remove section')
+    removeBtn.innerHTML = '&times;'
+    removeBtn.addEventListener('click', () => {
+      // Move this section's ingredients back to "No section" instead of
+      // deleting them along with the header they were filed under.
+      const unsectionedRows = ingredientsListEl.querySelector(
+        '.ingredient-group[data-section-id="unsectioned"] .ingredient-group-rows',
+      )
+      Array.from(rowsEl.children).forEach((row) => {
+        if (unsectionedRows) unsectionedRows.appendChild(row)
+      })
+      group.remove()
+      refreshIngredientGroups()
+    })
+
+    header.append(input, removeBtn)
+    group.appendChild(header)
+  }
+
+  group.appendChild(rowsEl)
+
+  const addBtn = document.createElement('button')
+  addBtn.type = 'button'
+  addBtn.className = 'btn btn-secondary add-row-btn small-add-btn'
+  addBtn.textContent = '+ Add Ingredient'
+  addBtn.addEventListener('click', () => {
+    rowsEl.appendChild(createIngredientRow({}))
+    refreshIngredientGroups()
+  })
+  group.appendChild(addBtn)
+
+  return group
 }
-
-addIngredientBtn.addEventListener('click', () => {
-  ingredientsListEl.appendChild(createIngredientRow({}))
-})
 
 addSectionBtn.addEventListener('click', () => {
-  ingredientsListEl.appendChild(createSectionRow(''))
+  ingredientsListEl.appendChild(createIngredientGroup(''))
+  refreshIngredientGroups()
 })
 
+// Rebuilds the grouped editor UI from a flat, possibly section-marked
+// ingredients array (see parseIngredients/isIngredientSection). Items
+// before the first { section } marker land in the unsectioned group.
 function setIngredientRows(rows) {
   ingredientsListEl.innerHTML = ''
+
+  const unsectionedGroup = createIngredientGroup(null)
+  ingredientsListEl.appendChild(unsectionedGroup)
+  let currentRowsEl = unsectionedGroup.querySelector('.ingredient-group-rows')
+
   const list = rows && rows.length ? rows : [{}]
   for (const item of list) {
     if (isIngredientSection(item)) {
-      ingredientsListEl.appendChild(createSectionRow(item.section))
+      const group = createIngredientGroup(item.section)
+      ingredientsListEl.appendChild(group)
+      currentRowsEl = group.querySelector('.ingredient-group-rows')
     } else {
-      ingredientsListEl.appendChild(createIngredientRow(item))
+      currentRowsEl.appendChild(createIngredientRow(item))
     }
   }
+
+  refreshIngredientGroups()
 }
 
 function getIngredientRows() {
-  const result = []
-  for (const row of Array.from(ingredientsListEl.children)) {
-    if (row.classList.contains('section-row')) {
-      const label = row.querySelector('.section-label-input').value.trim()
-      if (label) result.push({ section: label })
-    } else {
+  const raw = []
+  Array.from(ingredientsListEl.children).forEach((group) => {
+    if (group.dataset.sectionId !== 'unsectioned') {
+      const input = group.querySelector('.section-label-input')
+      const label = input ? input.value.trim() : ''
+      if (label) raw.push({ section: label })
+    }
+    group.querySelectorAll('.ingredient-row').forEach((row) => {
       const qty = row.querySelector('.ingredient-qty').value.trim()
       const unit = (row.querySelector('.unit-trigger').dataset.value || '').trim()
       const name = row.querySelector('.ingredient-name').value.trim()
-      if (name) result.push({ qty, unit, name })
-    }
-  }
-  return result
+      if (name) raw.push({ qty, unit, name })
+    })
+  })
+
+  // Drop a section header with nothing under it (before the next header
+  // or the end of the list) - it would otherwise save as a heading with
+  // no ingredients, which is just leftover editor state, not intent.
+  return raw.filter((item, i) => {
+    if (!isIngredientSection(item)) return true
+    const next = raw[i + 1]
+    return next && !isIngredientSection(next)
+  })
 }
 
 // ---------- Recipe photo: upload from device or paste a URL ----------

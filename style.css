@@ -464,8 +464,43 @@ textarea:focus {
 .ingredients-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   max-width: 100%;
+}
+
+.ingredient-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ingredient-group + .ingredient-group {
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+
+.ingredient-group-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.section-header-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.section-header-row .section-label-input {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  color: var(--accent-dark);
+}
+
+.small-add-btn {
+  align-self: flex-start;
 }
 
 .ingredient-row {
@@ -483,8 +518,23 @@ textarea:focus {
   padding: 10px;
 }
 
+.move-to-select {
+  flex: none;
+  max-width: 110px;
+  font-size: 0.8rem;
+  padding: 6px 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text-light);
+}
+
+.ingredients-list:not(.has-sections) .move-to-select {
+  display: none;
+}
+
 .ingredient-row .remove-ingredient-btn,
-.section-row .remove-ingredient-btn {
+.section-header-row .remove-ingredient-btn {
   flex: none;
   background: none;
   border: none;
@@ -495,30 +545,8 @@ textarea:focus {
   padding: 4px 8px;
 }
 .ingredient-row .remove-ingredient-btn:hover,
-.section-row .remove-ingredient-btn:hover {
+.section-header-row .remove-ingredient-btn:hover {
   color: var(--danger);
-}
-
-.section-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 6px;
-  padding-top: 10px;
-  border-top: 1px dashed var(--border);
-}
-
-.section-row .section-label-input {
-  flex: 1;
-  min-width: 0;
-  font-weight: 700;
-  color: var(--accent-dark);
-}
-
-.ingredients-add-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
 }
 
 .add-row-btn {
