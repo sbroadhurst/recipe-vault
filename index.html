@@ -127,9 +127,14 @@
 
           <label>Ingredients</label>
           <div id="ingredients-list" class="ingredients-list"></div>
-          <button type="button" id="add-ingredient-btn" class="btn btn-secondary add-row-btn">
-            + Add Ingredient
-          </button>
+          <div class="ingredients-add-row">
+            <button type="button" id="add-ingredient-btn" class="btn btn-secondary add-row-btn">
+              + Add Ingredient
+            </button>
+            <button type="button" id="add-section-btn" class="btn btn-secondary add-row-btn">
+              + Add Section
+            </button>
+          </div>
 
           <label>Instructions</label>
           <div id="instructions-list" class="instructions-list"></div>
@@ -158,7 +163,7 @@
           <h3>Ingredients</h3>
           <button type="button" id="unit-toggle-btn" class="link-btn unit-toggle-btn"></button>
         </div>
-        <ul id="view-ingredients"></ul>
+        <div id="view-ingredients" class="ingredients-view"></div>
 
         <h3>Instructions</h3>
         <ol id="view-instructions" class="view-instructions"></ol>

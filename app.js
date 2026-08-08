@@ -46,6 +46,7 @@ const tagsInput = document.getElementById('tags-input')
 const addTagBtn = document.getElementById('add-tag-btn')
 const ingredientsListEl = document.getElementById('ingredients-list')
 const addIngredientBtn = document.getElementById('add-ingredient-btn')
+const addSectionBtn = document.getElementById('add-section-btn')
 const instructionsListEl = document.getElementById('instructions-list')
 const addInstructionBtn = document.getElementById('add-instruction-btn')
 const deleteRecipeBtn = document.getElementById('delete-recipe-btn')
@@ -339,26 +340,64 @@ function createIngredientRow(data) {
   return row
 }
 
+// A labeled divider row for grouping ingredients - e.g. "Crust" and
+// "Filling" for a recipe with multiple components. Saved alongside the
+// ingredient rows as { section: "label" } in list order.
+function createSectionRow(label) {
+  const row = document.createElement('div')
+  row.className = 'section-row'
+
+  const input = document.createElement('input')
+  input.type = 'text'
+  input.className = 'section-label-input'
+  input.placeholder = 'Section name, e.g. Crust'
+  input.value = label || ''
+
+  const removeBtn = document.createElement('button')
+  removeBtn.type = 'button'
+  removeBtn.className = 'remove-ingredient-btn'
+  removeBtn.setAttribute('aria-label', 'Remove section')
+  removeBtn.innerHTML = '&times;'
+  removeBtn.addEventListener('click', () => row.remove())
+
+  row.append(input, removeBtn)
+  return row
+}
+
 addIngredientBtn.addEventListener('click', () => {
   ingredientsListEl.appendChild(createIngredientRow({}))
+})
+
+addSectionBtn.addEventListener('click', () => {
+  ingredientsListEl.appendChild(createSectionRow(''))
 })
 
 function setIngredientRows(rows) {
   ingredientsListEl.innerHTML = ''
   const list = rows && rows.length ? rows : [{}]
-  for (const r of list) {
-    ingredientsListEl.appendChild(createIngredientRow(r))
+  for (const item of list) {
+    if (isIngredientSection(item)) {
+      ingredientsListEl.appendChild(createSectionRow(item.section))
+    } else {
+      ingredientsListEl.appendChild(createIngredientRow(item))
+    }
   }
 }
 
 function getIngredientRows() {
-  return Array.from(ingredientsListEl.querySelectorAll('.ingredient-row'))
-    .map((row) => ({
-      qty: row.querySelector('.ingredient-qty').value.trim(),
-      unit: (row.querySelector('.unit-trigger').dataset.value || '').trim(),
-      name: row.querySelector('.ingredient-name').value.trim(),
-    }))
-    .filter((r) => r.name)
+  const result = []
+  for (const row of Array.from(ingredientsListEl.children)) {
+    if (row.classList.contains('section-row')) {
+      const label = row.querySelector('.section-label-input').value.trim()
+      if (label) result.push({ section: label })
+    } else {
+      const qty = row.querySelector('.ingredient-qty').value.trim()
+      const unit = (row.querySelector('.unit-trigger').dataset.value || '').trim()
+      const name = row.querySelector('.ingredient-name').value.trim()
+      if (name) result.push({ qty, unit, name })
+    }
+  }
+  return result
 }
 
 // ---------- Recipe photo: upload from device or paste a URL ----------
@@ -628,10 +667,10 @@ let currentlyViewingId = null
 let unitSystem = localStorage.getItem('recipeVaultUnitSystem') || 'original'
 
 function renderIngredientsList(recipe) {
-  viewIngredients.innerHTML = parseIngredients(recipe.ingredients)
-    .map((ing) => convertIngredientForDisplay(ing, unitSystem))
-    .map((ing) => `<li>${escapeHtml(formatIngredientLine(ing))}</li>`)
-    .join('')
+  const items = parseIngredients(recipe.ingredients).map((item) =>
+    isIngredientSection(item) ? item : convertIngredientForDisplay(item, unitSystem),
+  )
+  viewIngredients.innerHTML = renderIngredientsHtml(items)
 }
 
 function updateUnitToggleButton() {
@@ -843,7 +882,7 @@ function applyFilters() {
     if (!q) return true
 
     const ingredientNames = parseIngredients(r.ingredients)
-      .map((i) => i.name)
+      .map((i) => i.name || i.section || '')
       .join(' ')
     const haystack = [r.title, ingredientNames, (r.tags || []).join(' ')].join(' ').toLowerCase()
     return haystack.includes(q)
@@ -1011,7 +1050,7 @@ recipeForm.addEventListener('submit', async (e) => {
   }
 
   const ingredientRows = getIngredientRows()
-  if (!ingredientRows.length) {
+  if (!ingredientRows.some((r) => !isIngredientSection(r))) {
     showToast('Add at least one ingredient.')
     return
   }

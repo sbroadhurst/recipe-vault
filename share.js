@@ -18,10 +18,10 @@ let currentSharedRecipe = null
 let unitSystem = localStorage.getItem('recipeVaultUnitSystem') || 'original'
 
 function renderIngredientsList(r) {
-  return parseIngredients(r.ingredients)
-    .map((ing) => convertIngredientForDisplay(ing, unitSystem))
-    .map((ing) => `<li>${escapeHtml(formatIngredientLine(ing))}</li>`)
-    .join('')
+  const items = parseIngredients(r.ingredients).map((item) =>
+    isIngredientSection(item) ? item : convertIngredientForDisplay(item, unitSystem),
+  )
+  return renderIngredientsHtml(items)
 }
 
 function renderSharedRecipe(r) {
@@ -44,7 +44,7 @@ function renderSharedRecipe(r) {
       <h3>Ingredients</h3>
       <button type="button" id="unit-toggle-btn" class="link-btn unit-toggle-btn">${unitToggleLabel(unitSystem)}</button>
     </div>
-    <ul id="share-ingredients">${renderIngredientsList(r)}</ul>
+    <div id="share-ingredients" class="ingredients-view">${renderIngredientsList(r)}</div>
 
     <h3>Instructions</h3>
     <ol class="view-instructions">${instructionsHtml}</ol>

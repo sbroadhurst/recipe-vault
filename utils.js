@@ -12,8 +12,11 @@ function escapeAttr(str) {
 }
 
 // Parses the ingredients column, which stores a JSON array of
-// { qty, unit, name }. Falls back to treating older plain-text,
-// newline-separated ingredients (name only) as legacy data.
+// { qty, unit, name } items, optionally interspersed with section
+// headers ({ section: "Crust" }) to group ingredients for recipes with
+// multiple components (e.g. a pie crust and a filling). Falls back to
+// treating older plain-text, newline-separated ingredients (name only)
+// as legacy data.
 function parseIngredients(raw) {
   if (!raw) return []
   try {
@@ -29,8 +32,40 @@ function parseIngredients(raw) {
     .map((name) => ({ qty: '', unit: '', name }))
 }
 
+// True for a section-header item (as opposed to an actual ingredient).
+function isIngredientSection(item) {
+  return !!item && typeof item.section === 'string'
+}
+
 function formatIngredientLine(ing) {
   return [ing.qty, ing.unit, ing.name].filter(Boolean).join(' ')
+}
+
+// Renders a parsed ingredients array (ingredient items and/or section
+// headers) as HTML: a heading before each section's items, with the
+// items themselves grouped into their own <ul>. Ingredients that come
+// before the first section header (or all of them, for recipes with no
+// sections) get a single unlabeled list.
+function renderIngredientsHtml(items) {
+  let html = ''
+  let listOpen = false
+  for (const item of items) {
+    if (isIngredientSection(item)) {
+      if (listOpen) {
+        html += '</ul>'
+        listOpen = false
+      }
+      html += `<p class="ingredient-section-label">${escapeHtml(item.section)}</p>`
+    } else {
+      if (!listOpen) {
+        html += '<ul>'
+        listOpen = true
+      }
+      html += `<li>${escapeHtml(formatIngredientLine(item))}</li>`
+    }
+  }
+  if (listOpen) html += '</ul>'
+  return html
 }
 
 // ---------- Unit conversion (metric <-> imperial) ----------
