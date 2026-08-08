@@ -318,8 +318,10 @@ function createIngredientRow(data) {
   const qty = document.createElement('input')
   qty.type = 'text'
   qty.className = 'ingredient-qty'
-  qty.placeholder = 'Qty'
-  qty.inputMode = 'decimal'
+  qty.placeholder = 'e.g. 1 1/2'
+  // Not "decimal" - that keyboard hides the "/" key on phones, making
+  // it impossible to type fractions like "1/2".
+  qty.inputMode = 'text'
   qty.value = data.qty || ''
 
   const unitCombo = createUnitCombo(data.unit)
@@ -898,6 +900,7 @@ function openAddModal() {
   modalTitle.textContent = 'Add Recipe'
   recipeForm.reset()
   recipeIdInput.value = ''
+  importUrlInput.value = ''
   setTags([])
   setIngredientRows([{}])
   setInstructionRows([''])
@@ -909,6 +912,7 @@ function openAddModal() {
 function openEditModal(recipe) {
   modalTitle.textContent = 'Edit Recipe'
   recipeIdInput.value = recipe.id
+  importUrlInput.value = ''
   recipeTitleInput.value = recipe.title || ''
   recipeSourceInput.value = recipe.source_url || ''
   recipeImageInput.value = recipe.image_url || ''
@@ -1043,6 +1047,7 @@ recipeForm.addEventListener('submit', async (e) => {
   }
 
   recipeModal.classList.add('hidden')
+  importUrlInput.value = ''
   showToast(id ? 'Recipe updated' : 'Recipe added')
   loadRecipes()
 })
