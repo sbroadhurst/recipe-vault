@@ -327,12 +327,12 @@ function refreshIngredientGroups() {
     return { id, label }
   })
 
-  ingredientsListEl.querySelectorAll('.move-to-select').forEach((select) => {
-    const parentGroup = select.closest('.ingredient-group')
+  ingredientsListEl.querySelectorAll('.move-to-trigger').forEach((trigger) => {
+    const parentGroup = trigger.closest('.ingredient-group')
     const currentId = parentGroup ? parentGroup.dataset.sectionId : 'unsectioned'
-    select.innerHTML = options
-      .map((o) => `<option value="${escapeAttr(o.id)}"${o.id === currentId ? ' selected' : ''}>${escapeHtml(o.label)}</option>`)
-      .join('')
+    const current = options.find((o) => o.id === currentId)
+    trigger.dataset.value = currentId
+    trigger.textContent = current ? current.label : 'No section'
   })
 }
 
@@ -353,18 +353,32 @@ function createIngredientRow(data) {
   const nameCombo = createNameCombo(data.name)
 
   // Lets an ingredient be reassigned to any section (or back to "No
-  // section") without retyping it - populated/kept in sync by
-  // refreshIngredientGroups(). Hidden until a recipe actually has more
-  // than one section.
-  const moveToSelect = document.createElement('select')
-  moveToSelect.className = 'move-to-select'
-  moveToSelect.setAttribute('aria-label', 'Move ingredient to section')
-  moveToSelect.addEventListener('change', () => {
-    const targetGroup = Array.from(ingredientsListEl.children).find(
-      (g) => g.dataset.sectionId === moveToSelect.value,
-    )
-    if (targetGroup) targetGroup.querySelector('.ingredient-group-rows').appendChild(row)
-    refreshIngredientGroups()
+  // section") without retyping it. Built as a custom combo (like the
+  // unit picker) rather than a native <select> so its dropdown panel is
+  // always exactly as wide as its own trigger - a native select's
+  // popup sizes itself to its longest option and can spill past the
+  // dialog's edge on narrow screens or with long section names.
+  const moveCombo = document.createElement('div')
+  moveCombo.className = 'combo move-to-combo'
+  moveCombo.innerHTML = `
+    <button type="button" class="combo-trigger move-to-trigger" aria-label="Move ingredient to section"></button>
+    <div class="combo-panel hidden">
+      <div class="combo-options"></div>
+    </div>
+  `
+  const moveTrigger = moveCombo.querySelector('.move-to-trigger')
+  const movePanel = moveCombo.querySelector('.combo-panel')
+  const moveOptionsEl = moveCombo.querySelector('.combo-options')
+
+  moveTrigger.addEventListener('click', () => {
+    const willOpen = movePanel.classList.contains('hidden')
+    closeAllCombos(moveCombo)
+    if (willOpen) {
+      renderMoveToOptions(moveOptionsEl, row, movePanel)
+      movePanel.classList.remove('hidden')
+    } else {
+      movePanel.classList.add('hidden')
+    }
   })
 
   const removeBtn = document.createElement('button')
@@ -374,9 +388,35 @@ function createIngredientRow(data) {
   removeBtn.innerHTML = '&times;'
   removeBtn.addEventListener('click', () => row.remove())
 
-  row.append(qty, unitCombo, nameCombo, moveToSelect, removeBtn)
+  row.append(qty, unitCombo, nameCombo, moveCombo, removeBtn)
 
   return row
+}
+
+// Builds the list of sections an ingredient row can be moved to (shown
+// when its move-to combo is opened), and wires up moving `row` into
+// whichever one gets clicked.
+function renderMoveToOptions(optionsEl, row, panel) {
+  const groups = Array.from(ingredientsListEl.children)
+  const options = groups.map((group) => {
+    const id = group.dataset.sectionId
+    if (id === 'unsectioned') return { id, label: 'No section' }
+    const input = group.querySelector('.section-label-input')
+    return { id, label: (input && input.value.trim()) || 'Untitled section' }
+  })
+
+  optionsEl.innerHTML = options
+    .map((o) => `<div class="combo-option" data-value="${escapeAttr(o.id)}">${escapeHtml(o.label)}</div>`)
+    .join('')
+
+  optionsEl.querySelectorAll('.combo-option').forEach((opt) => {
+    opt.addEventListener('click', () => {
+      const targetGroup = groups.find((g) => g.dataset.sectionId === opt.dataset.value)
+      if (targetGroup) targetGroup.querySelector('.ingredient-group-rows').appendChild(row)
+      panel.classList.add('hidden')
+      refreshIngredientGroups()
+    })
+  })
 }
 
 let sectionIdCounter = 0

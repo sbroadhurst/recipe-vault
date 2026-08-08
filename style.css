@@ -512,24 +512,28 @@ textarea:focus {
   min-width: 0;
 }
 
+/* All the ingredient row's input-like controls (qty, unit, name, move-to)
+   share one padding/font-size so they render at the same height
+   regardless of whether they're a plain <input> or a combo's trigger
+   <button>. */
+.ingredient-row .ingredient-qty,
+.ingredient-row .ingredient-name,
+.ingredient-row .combo-trigger {
+  padding: 10px;
+  font-size: 0.9rem;
+}
+
 .ingredient-row .ingredient-qty {
   width: 64px;
   flex: none;
-  padding: 10px;
 }
 
-.move-to-select {
+.move-to-combo {
   flex: none;
-  max-width: 110px;
-  font-size: 0.8rem;
-  padding: 6px 4px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: #fff;
-  color: var(--text-light);
+  width: 92px;
 }
 
-.ingredients-list:not(.has-sections) .move-to-select {
+.ingredients-list:not(.has-sections) .move-to-combo {
   display: none;
 }
 
